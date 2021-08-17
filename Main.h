@@ -12,6 +12,7 @@ enum class EMovementStatus : uint8
 	EMS_Normal UMETA(DisplayName = "Normal"),
 	EMS_Sprint UMETA(DisplayName = "Sprinting"),
 	EMS_Dead UMETA(DisplayName = "Dead"),
+	EMS_ADS UMETA(DisplayName = "ADS"),
 
 	EMS_MAX UMETA(DisplayName = "DefaultMAX")
 };
@@ -35,6 +36,35 @@ class FIRSTPROJECT_API AMain : public ACharacter
 public:
 	// Sets default values for this character's properties
 	AMain();
+
+	//** ADS Implementation */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	bool bInADS;
+
+	// ADS Movement Speed
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ADS")
+	float MovementSpeedInADS;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ADS")
+	float CameraMovementSpeedinADS;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ADS")
+	FVector CameraOffsetForADS;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ADS")
+	float TargetDistance;
+
+	// Right mouse button bind for ADS
+	UFUNCTION()
+	void ToggleADS();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "ADS")
+	void MoveCamera();
+
+	UFUNCTION(BlueprintCallable, Category = "ADS")
+	void UpdateCameraPosition(FVector Offset);
+
+	/************************/
 
 	UPROPERTY(EditDefaultsOnly, Category = "SaveData")
 	TSubclassOf<class AItemStorage> WeaponStorage;
@@ -255,4 +285,19 @@ public:
 	void LoadGame(bool SetPosition);
 
 	void LoadGameNoSwitch();
+
+	// Binding Inputs for Projectile Firing 
+	UFUNCTION()
+	void Fire();
+
+	UFUNCTION(BlueprintCallable)
+	void SpawnProjectile();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
+	FVector RangedAttackSpawnLocation;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	TSubclassOf<class AProjectile> ProjectileClass;
+
+	void TestMainLog();
 };

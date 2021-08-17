@@ -15,6 +15,7 @@
 #include "MainPlayerController.h"
 #include "FirstSaveGame.h"
 #include "ItemStorage.h"
+#include "Projectile.h"
 
 // Sets default values
 AMain::AMain()
@@ -61,6 +62,7 @@ AMain::AMain()
 	Stamina = 100.f;
 	Coins = 0;
 	
+	MovementSpeedInADS = 250.f;
 	RunningSpeed = 650.f;
 	SprintingSpeed = 950.f;
 
@@ -82,6 +84,16 @@ AMain::AMain()
 	bMovingRight = false;
 
 	bESCDown = false;
+
+	bInADS = false;
+
+	CameraOffsetForADS.X = 200.f;
+	CameraOffsetForADS.Y = 200.f;
+	CameraOffsetForADS.Z = 200.f;
+
+	CameraMovementSpeedinADS = 1.f;
+
+	TargetDistance = 1000.f;
 }
 
 // Called when the game starts or when spawned
@@ -94,7 +106,7 @@ void AMain::BeginPlay()
 	FString Map = GetWorld()->GetMapName();
 	Map.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
 
-	if (Map != "SunTemple")
+	if (Map != "ElvenRuins")
 	{
 		LoadGameNoSwitch();
 
@@ -143,7 +155,19 @@ void AMain::Tick(float DeltaTime)
 				SetMovementStatus(EMovementStatus::EMS_Normal);
 			}
 		}
-		else //Shift Key Up
+		else if (bInADS)
+		{
+			if (Stamina + DeltaStamina >= MaxStamina)
+			{
+				Stamina = MaxStamina;
+			}
+			else
+			{
+				Stamina += DeltaStamina;
+			}
+			SetMovementStatus(EMovementStatus::EMS_ADS);
+		}
+		else //Shift Key and no ADS
 		{
 			if (Stamina + DeltaStamina >= MaxStamina)
 			{
@@ -263,6 +287,8 @@ void AMain::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 	PlayerInputComponent->BindAction("ESC", IE_Pressed, this, &AMain::ESCDown);
 	PlayerInputComponent->BindAction("ESC", IE_Released, this, &AMain::ESCUp);
+
+	PlayerInputComponent->BindAction("RMB", IE_Pressed, this, &AMain::ToggleADS);
 	
 	PlayerInputComponent->BindAxis("MoveForward", this, &AMain::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AMain::MoveRight);
@@ -366,7 +392,11 @@ void AMain::LMBDown()
 		}
 	}
 
-	if (ActiveOverlappingItem)
+	if (bInADS)
+	{
+		Fire();
+	}
+	else if (ActiveOverlappingItem)
 	{
 		AWeapon* Weapon = Cast<AWeapon>(ActiveOverlappingItem);
 		if (Weapon)
@@ -448,6 +478,10 @@ void AMain::DeathEnd()
 void AMain::IncrementCoin(int32 Amount)
 {
 	Coins += Amount;
+	if (Coins >= 15)
+	{
+		SwitchLevel("SunTemple");
+	}
 }
 
 void AMain::IncrementHealth(float Amount)
@@ -468,6 +502,10 @@ void AMain::SetMovementStatus(EMovementStatus Status)
 	if (MovementStatus == EMovementStatus::EMS_Sprint)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = SprintingSpeed;
+	}
+	else if (MovementStatus == EMovementStatus::EMS_ADS)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = MovementSpeedInADS;
 	}
 	else
 	{
@@ -531,7 +569,6 @@ void AMain::Attack()
 			}
 		}
 	}
-
 }
 
 void AMain::AttackEnd()
@@ -595,6 +632,14 @@ void AMain::UpdateCombatTarget()
 		return;
 	}
 
+	//if (CombatTarget)
+	//{
+	//	if (MainPlayerController)
+	//	{
+	//		MainPlayerController->DisplayEnemyHealthBar();
+	//	}
+	//}
+
 	AEnemy* ClosestEnemy = Cast<AEnemy>(OverlappingActors[0]);
 	if (ClosestEnemy)
 	{
@@ -621,6 +666,7 @@ void AMain::UpdateCombatTarget()
 		SetCombatTarget(ClosestEnemy);
 		bHasCombatTarget = true;
 	}
+	
 }
 
 void AMain::SwitchLevel(FName LevelName)
@@ -741,4 +787,99 @@ void AMain::LoadGameNoSwitch()
 
 	GetMesh()->bPauseAnims = false;
 	GetMesh()->bNoSkeletonUpdate = false;
+}
+
+void AMain::Fire()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && CombatMontage)
+	{
+		AnimInstance->Montage_Play(CombatMontage, 3.f);
+		AnimInstance->Montage_JumpToSection(TEXT("MagicAttack"));
+	}
+}
+
+void AMain::SpawnProjectile()
+{
+	if (ProjectileClass && FollowCamera)
+	{
+		// get the actor transform
+		FVector ActorLocation = this->GetActorLocation();
+		FRotator ActorRotation = this->GetActorRotation();
+
+		// Getting Camera Forward Vector and TargetDistance Scalar
+		FVector CameraForwardVector = FollowCamera->GetForwardVector();
+		CameraForwardVector *= TargetDistance;
+
+		// Offset because we want the projectile to spawn in front of player, not inside
+		FVector RangedAttackOffset(100.0f, 0.0f, 0.0f);
+
+		// Determin the Spawn Location
+		FVector ForwardVector = GetActorForwardVector();
+		ForwardVector *= 250;
+		FVector SpawnLocation = ActorLocation + ForwardVector;
+		SpawnLocation.Z += 50.f;
+
+		// Getting vector between camera and spawn location
+		FVector CameraLocation = FollowCamera->GetComponentLocation();
+		FVector CameraLocationToSpawnLocation = SpawnLocation - CameraLocation;
+		FVector ShootDirection = CameraForwardVector - CameraLocationToSpawnLocation;
+
+		// Finally Normalize it
+		ShootDirection.Normalize();
+
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.Instigator = GetInstigator();
+
+			// Spawn the projectile at the muzzle
+			AProjectile* Projectile = World->SpawnActor<AProjectile>(ProjectileClass, SpawnLocation, ActorRotation, SpawnParams);
+
+			if (Projectile)
+			{
+				Projectile->FireInDirection(ShootDirection);
+			}
+
+			if (Projectile->OnFireSound)
+			{
+				UGameplayStatics::PlaySound2D(this, Projectile->OnFireSound);
+			}
+		}
+	}
+}
+
+void AMain::ToggleADS()
+{
+	bInADS = !bInADS;
+	MoveCamera();
+	if (bInADS)
+	{
+		MainPlayerController->DisplayCrosshair();
+	}
+	else
+	{
+		MainPlayerController->RemoveCrosshair();
+	}
+	//FVector CameraLocation = FollowCamera->GetComponentLocation();
+	//UE_LOG(LogTemp, Warning, TEXT("The vector value is: %s"), *CameraLocation.ToString());
+}
+
+void AMain::UpdateCameraPosition(FVector Offset)
+{
+	if (bInADS)
+	{
+		CameraBoom->SocketOffset += Offset;
+	}
+	else
+	{
+		CameraBoom->SocketOffset -= Offset;
+	}
+}
+
+void AMain::TestMainLog()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AMain::TestMainLog()"));
 }

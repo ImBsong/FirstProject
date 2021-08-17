@@ -101,6 +101,10 @@ void AEnemy::AggroSphereOnOverlapBegin(UPrimitiveComponent* OverlappedComponent,
 		{
 
 			MoveToTarget(Main);
+
+			/** Enemy Health Bar Display*/
+			Main->SetHasCombatTarget(true);
+			Main->UpdateCombatTarget();
 		}
 	}
 }
@@ -147,10 +151,6 @@ void AEnemy::CombatSphereOnOverlapBegin(UPrimitiveComponent* OverlappedComponent
 
 				bHasValidTarget = true;
 				Main->SetCombatTarget(this);
-
-				/** Enemy Health Bar Display*/
-				Main->SetHasCombatTarget(true);
-				Main->UpdateCombatTarget();
 
 				CombatTarget = Main;
 				bOverlappingCombatSphere = true;
@@ -336,6 +336,8 @@ void AEnemy::Die(AActor* Causer)
 	AMain* Main = Cast<AMain>(Causer);
 	if (Main)
 	{
+		Main->SetCombatTarget(nullptr);
+		Main->SetHasCombatTarget(false);
 		Main->UpdateCombatTarget();
 	}
 }

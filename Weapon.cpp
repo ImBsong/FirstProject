@@ -68,12 +68,12 @@ void AWeapon::Equip(class AMain* Character)
 {
     if (Character)
     {
-        /** Weapon is an actor, so need to use character's controller as instigator */
+        /** Weapon is an actor, so need to use character's controller as instigator.  Set Character's Controller as Weapon's Instigator */
         SetInstigator(Character->GetController());
 
         /** This is ensuring your camera doesn't move when you swing. */
         SkeletalMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-        /** This is ensuring your camer doesn't move when you swing. */
+        /** This is ensuring your camera doesn't move when you swing. */
         SkeletalMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 
         /** Just in case we are simulating physics, stop simulating physics when attached*/
@@ -130,7 +130,6 @@ void AWeapon::CombatOnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AAc
             {
                 UGameplayStatics::ApplyDamage(Enemy, Damage, WeaponInstigator, this, DamageTypeClass);
             }
-
         }
     }
 }

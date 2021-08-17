@@ -55,6 +55,20 @@ public:
 
 	void GameModeOnly();
 
+	//** ADS */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget")
+	TSubclassOf<UUserWidget> WCrosshair;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Widget")
+	UUserWidget* Crosshair;
+
+	bool bCrosshairVisible;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "HUD")
+	void DisplayCrosshair();
+
+	void RemoveCrosshair();
+
 protected:
 	virtual void BeginPlay() override;
 

@@ -39,6 +39,17 @@ void AMainPlayerController::BeginPlay()
             PauseMenu->SetVisibility(ESlateVisibility::Hidden);
         }
     }
+
+    if (WCrosshair)
+    {
+        Crosshair = CreateWidget<UUserWidget>(this, WCrosshair);
+        if (WCrosshair)
+        {
+            Crosshair->AddToViewport();
+            Crosshair->SetVisibility(ESlateVisibility::Hidden);
+            bCrosshairVisible = false;
+        }
+    }
 }
 
 void AMainPlayerController::Tick(float DeltaTime)
@@ -51,6 +62,7 @@ void AMainPlayerController::Tick(float DeltaTime)
         FVector2D PositionInViewport;
         ProjectWorldLocationToScreen(EnemyLocation, PositionInViewport);
         PositionInViewport.Y -= 100.f;
+        PositionInViewport.X -= 100.f;
 
         FVector2D SizeInViewport = FVector2D(300.f, 25.f);
 
@@ -120,4 +132,21 @@ void AMainPlayerController::GameModeOnly()
     FInputModeGameOnly InputModeGameOnly;
 
     SetInputMode(InputModeGameOnly);
+}
+
+void AMainPlayerController::DisplayCrosshair_Implementation()
+{
+    if (Crosshair)
+    {
+        bCrosshairVisible = true;
+    }
+}
+
+void AMainPlayerController::RemoveCrosshair()
+{
+    if (Crosshair)
+    {
+        bCrosshairVisible = false;
+        Crosshair->SetVisibility(ESlateVisibility::Hidden);
+    }
 }
